@@ -7,6 +7,17 @@ import javax.swing.JTextField;
 import javax.swing.JLabel;
 import javax.swing.JButton;
 
+import org.joda.time.DateTime;
+
+import java.io.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.util.Calendar;
+import java.util.Date;
+
+import sun.audio.*;
+
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
@@ -14,6 +25,7 @@ public class MedFrame {
 
 	private JFrame frame;
 	private JTextField numOfMeds;
+	private JComboBox<String> timeList;
 
 	/**
 	 * Launch the application.
@@ -60,9 +72,15 @@ public class MedFrame {
 		frame.getContentPane().add(numOfMeds);
 		numOfMeds.setColumns(10);
 
-		JButton numOfMedsBttn = new JButton("Enter");
-		numOfMedsBttn.addActionListener(new ActionListener() {
+		JButton numOfMedsBtn = new JButton("Enter");
+		numOfMedsBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+
+				Calendar cal = Calendar.getInstance();
+				SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+				System.out.println( sdf.format(cal.getTime()) );
+
+				playAlarm();
 				int intNumOfMeds = 0;
 				try {
 					intNumOfMeds = Integer.parseInt(numOfMeds.getText());
@@ -71,13 +89,73 @@ public class MedFrame {
 					frame.revalidate(); // tells the layout manager to reset based on the new component list. This will also trigger a call to repaint.	
 					frame.repaint();	// used to tell a component to repaint itself.
 				} catch (NumberFormatException e1) {
-					JOptionPane.showMessageDialog(null, "Please enter number only");
+					JOptionPane.showMessageDialog(null, "Please enter numbers only");
 				}	
 			}
 		});
-		numOfMedsBttn.setBounds(268, 81, 117, 29);
-		frame.getContentPane().add(numOfMedsBttn);
+		numOfMedsBtn.setBounds(268, 81, 117, 29);
+		frame.getContentPane().add(numOfMedsBtn);
 
+		// resets frame
+		JButton resetBtn = new JButton("Reset");
+		resetBtn.setBounds(383, 81, 117, 29);
+		frame.getContentPane().add(resetBtn);
+
+		/**
+		 * starts alarm, converts local time to military time
+		 */
+		JButton startBtn = new JButton("Start");
+		startBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String value = timeList.getSelectedItem().toString();
+				Calendar cal = Calendar.getInstance();
+				
+				int year = cal.get(Calendar.YEAR);
+				int month = cal.get(Calendar.MONTH) + 1;
+				int day = cal.get(Calendar.DAY_OF_MONTH);
+				int hour = 0;
+				int min = 0;
+
+				if (value.equals("12:00AM")) {
+					hour = 0;
+					min = 0;
+				} else if (value.equals("12:30AM")) {
+					min = 30;
+				} else if (value.contains("AM") || value.substring(0, 2).equals("12")) { // can only be 12pm
+					if (value.length() == 7) {
+						hour = Integer.parseInt(value.substring(0, 2));	
+						min = Integer.parseInt(value.substring(3, 5));
+					} else {
+						hour = Integer.parseInt(value.substring(0, 1));	
+						min = Integer.parseInt(value.substring(2, 4));
+					}
+				} else { // after 12:59PM...
+					if (value.length() == 7) { // 10pm, 11pm, etc...
+						hour = Integer.parseInt(value.substring(0, 2)) + 12;
+					} else { // 1pm, 2pm, etc...
+						hour = Integer.parseInt(value.substring(0, 1)) + 12;
+						min = Integer.parseInt(value.substring(2, 4));
+					}
+				}
+				
+				DateTime now = DateTime.now();
+				DateTime limit = new DateTime(year, month, day, hour, min, 0, 0);
+				System.out.println("limit = " + limit);
+				Boolean isLate = now.isAfter(limit);
+				
+				if (isLate) {
+					System.out.println("before current time...");
+				} else {
+					System.out.println("after current time...");
+				}
+
+				System.out.println("now = " + now);
+//
+//				System.out.println(value);
+			}
+		});
+		startBtn.setBounds(499, 81, 117, 29);
+		frame.getContentPane().add(startBtn);
 	}
 
 	private void promtMeds(int intNumOfMeds) {
@@ -107,7 +185,7 @@ public class MedFrame {
 			frame.getContentPane().add(lblStartTime);
 
 			String[] times = startTimes();
-			JComboBox<String> timeList = new JComboBox<String>(times);
+			timeList = new JComboBox<String>(times);
 			timeList.setBounds(460, 89 + (i * 30), 200, 20);
 			frame.getContentPane().add(timeList);
 
@@ -146,5 +224,27 @@ public class MedFrame {
 			times[i + 26] = time + ":30PM";
 		}
 		return times;
+	}
+
+	@SuppressWarnings("restriction")
+	private void playAlarm() {
+		// open the sound file as a Java input stream
+		try {
+			String audioFile = "/Users/ydylan/Documents/wav_files/alarm.au";
+			InputStream in = new FileInputStream(audioFile);
+
+			// create an audiostream from the inputstream		 
+			AudioStream audioStream = new AudioStream(in);
+
+			// play the audio clip with the audioplayer class
+			AudioPlayer.player.start(audioStream);
+
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
