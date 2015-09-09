@@ -10,11 +10,10 @@ import javax.swing.JButton;
 import org.joda.time.DateTime;
 
 import java.io.*;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
+import java.util.Collections;
 
 import sun.audio.*;
 
@@ -26,6 +25,7 @@ public class MedFrame {
 	private JFrame frame;
 	private JTextField numOfMeds;
 	private JComboBox<String> timeList;
+	private final ArrayList<JComboBox<String>> timeSelectionList;
 
 	/**
 	 * Launch the application.
@@ -47,6 +47,7 @@ public class MedFrame {
 	 * Create the application.
 	 */
 	public MedFrame() {
+		timeSelectionList = new ArrayList<JComboBox<String>>();
 		initialize();
 	}
 
@@ -80,7 +81,7 @@ public class MedFrame {
 				SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 				System.out.println( sdf.format(cal.getTime()) );
 
-				playAlarm();
+				//				playAlarm();
 				int intNumOfMeds = 0;
 				try {
 					intNumOfMeds = Integer.parseInt(numOfMeds.getText());
@@ -107,51 +108,39 @@ public class MedFrame {
 		JButton startBtn = new JButton("Start");
 		startBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String value = timeList.getSelectedItem().toString();
-				Calendar cal = Calendar.getInstance();
-				
-				int year = cal.get(Calendar.YEAR);
-				int month = cal.get(Calendar.MONTH) + 1;
-				int day = cal.get(Calendar.DAY_OF_MONTH);
-				int hour = 0;
-				int min = 0;
-
-				if (value.equals("12:00AM")) {
-					hour = 0;
-					min = 0;
-				} else if (value.equals("12:30AM")) {
-					min = 30;
-				} else if (value.contains("AM") || value.substring(0, 2).equals("12")) { // can only be 12pm
-					if (value.length() == 7) {
-						hour = Integer.parseInt(value.substring(0, 2));	
-						min = Integer.parseInt(value.substring(3, 5));
-					} else {
-						hour = Integer.parseInt(value.substring(0, 1));	
-						min = Integer.parseInt(value.substring(2, 4));
-					}
-				} else { // after 12:59PM...
-					if (value.length() == 7) { // 10pm, 11pm, etc...
-						hour = Integer.parseInt(value.substring(0, 2)) + 12;
-					} else { // 1pm, 2pm, etc...
-						hour = Integer.parseInt(value.substring(0, 1)) + 12;
-						min = Integer.parseInt(value.substring(2, 4));
-					}
+				ArrayList<String> selectedTimeList = new ArrayList<String>();
+				for (JComboBox<String> timeList : timeSelectionList) {
+					selectedTimeList.add(timeList.getSelectedItem().toString());
 				}
-				
-				DateTime now = DateTime.now();
-				DateTime limit = new DateTime(year, month, day, hour, min, 0, 0);
-				System.out.println("limit = " + limit);
-				Boolean isLate = now.isAfter(limit);
-				
-				if (isLate) {
-					System.out.println("before current time...");
-				} else {
-					System.out.println("after current time...");
-				}
+				Collections.sort(selectedTimeList); // work with earliest times first
+				for (String time : selectedTimeList) {
+					System.out.println(time);
+					int hour = 0;
+					int min = 0;
 
-				System.out.println("now = " + now);
-//
-//				System.out.println(value);
+					if (time.equals("12:00AM")) {
+						hour = 0;
+						min = 0;
+					} else if (time.equals("12:30AM")) {
+						min = 30;
+					} else if (time.contains("AM") || time.substring(0, 2).equals("12")) { // can only be 12pm
+						if (time.length() == 7) {
+							hour = Integer.parseInt(time.substring(0, 2));	
+							min = Integer.parseInt(time.substring(3, 5));
+						} else {
+							hour = Integer.parseInt(time.substring(0, 1));	
+							min = Integer.parseInt(time.substring(2, 4));
+						}
+					} else { // after 12:59PM...
+						if (time.length() == 7) { // 10pm, 11pm, etc...
+							hour = Integer.parseInt(time.substring(0, 2)) + 12;
+						} else { // 1pm, 2pm, etc...
+							hour = Integer.parseInt(time.substring(0, 1)) + 12;
+							min = Integer.parseInt(time.substring(2, 4));
+						}
+					}
+					compareTimes(hour, min);
+				}
 			}
 		});
 		startBtn.setBounds(499, 81, 117, 29);
@@ -185,7 +174,8 @@ public class MedFrame {
 			frame.getContentPane().add(lblStartTime);
 
 			String[] times = startTimes();
-			timeList = new JComboBox<String>(times);
+			timeList = new JComboBox<String>(times); // add to some data structure
+			timeSelectionList.add(timeList);
 			timeList.setBounds(460, 89 + (i * 30), 200, 20);
 			frame.getContentPane().add(timeList);
 
@@ -200,6 +190,27 @@ public class MedFrame {
 			freqList.setBounds(740, 89 + (i * 30), 200, 20);
 			frame.getContentPane().add(freqList);
 		}
+	}
+
+	/**
+	 * Checks if given time has occurred.
+	 * @param hour
+	 * @param min
+	 */
+	private void compareTimes(int hour, int min) {
+		Calendar cal = Calendar.getInstance();
+		int year = cal.get(Calendar.YEAR);
+		int month = cal.get(Calendar.MONTH) + 1; // months start at 0th index
+		int day = cal.get(Calendar.DAY_OF_MONTH);
+		DateTime limit = new DateTime(year, month, day, hour, min, 0, 0);
+		Boolean isLate = false;
+		
+		System.out.println("alarm set...");
+		while(!isLate) {
+			DateTime now = DateTime.now();
+			isLate = now.isAfter(limit);
+		}
+		playAlarm(); // given alarm time has occurred.
 	}
 
 	private void setTextFields(JTextField textField, int xCord, int yCord, int width, int height) {
