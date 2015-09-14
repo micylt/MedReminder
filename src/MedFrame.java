@@ -6,6 +6,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.JLabel;
 import javax.swing.JButton;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import org.joda.time.DateTime;
 
@@ -14,6 +16,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 import sun.audio.*;
 
@@ -23,9 +28,10 @@ import java.awt.event.ActionEvent;
 public class MedFrame {
 
 	private JFrame frame;
-	private JTextField numOfMeds;
 	private JComboBox<String> timeList;
-	private final ArrayList<JComboBox<String>> timeSelectionList;
+	private final TreeMap<String, ArrayList<String>> medMap;
+	private JTextField medName;
+	private int medNum;
 
 	/**
 	 * Launch the application.
@@ -47,7 +53,8 @@ public class MedFrame {
 	 * Create the application.
 	 */
 	public MedFrame() {
-		timeSelectionList = new ArrayList<JComboBox<String>>();
+		medMap = new TreeMap<String, ArrayList<String>>();
+		medNum = 1;
 		initialize();
 	}
 
@@ -64,42 +71,13 @@ public class MedFrame {
 		frameLabel.setBounds(425, 18, 173, 51);
 		frame.getContentPane().add(frameLabel);
 
-		JLabel lblNumOfMeds = new JLabel("How many meds are you taking?");
+		JLabel lblNumOfMeds = new JLabel("Enter your medications.");
 		lblNumOfMeds.setBounds(6, 69, 217, 50);
 		frame.getContentPane().add(lblNumOfMeds);
 
-		numOfMeds = new JTextField();
-		numOfMeds.setBounds(222, 85, 41, 20);
-		frame.getContentPane().add(numOfMeds);
-		numOfMeds.setColumns(10);
-
-		JButton numOfMedsBtn = new JButton("Enter");
-		numOfMedsBtn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-
-				Calendar cal = Calendar.getInstance();
-				SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-				System.out.println( sdf.format(cal.getTime()) );
-
-				//				playAlarm();
-				int intNumOfMeds = 0;
-				try {
-					intNumOfMeds = Integer.parseInt(numOfMeds.getText());
-					promtMeds(intNumOfMeds);
-
-					frame.revalidate(); // tells the layout manager to reset based on the new component list. This will also trigger a call to repaint.	
-					frame.repaint();	// used to tell a component to repaint itself.
-				} catch (NumberFormatException e1) {
-					JOptionPane.showMessageDialog(null, "Please enter numbers only");
-				}	
-			}
-		});
-		numOfMedsBtn.setBounds(268, 81, 117, 29);
-		frame.getContentPane().add(numOfMedsBtn);
-
 		// resets frame
 		JButton resetBtn = new JButton("Reset");
-		resetBtn.setBounds(383, 81, 117, 29);
+		resetBtn.setBounds(183, 81, 117, 29);
 		frame.getContentPane().add(resetBtn);
 
 		/**
@@ -108,12 +86,8 @@ public class MedFrame {
 		JButton startBtn = new JButton("Start");
 		startBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				ArrayList<String> selectedTimeList = new ArrayList<String>();
-				for (JComboBox<String> timeList : timeSelectionList) {
-					selectedTimeList.add(timeList.getSelectedItem().toString());
-				}
-				Collections.sort(selectedTimeList); // work with earliest times first
-				for (String time : selectedTimeList) {
+				medTreeInsertion();
+				for (String time : medMap.keySet()) {
 					System.out.println(time);
 					int hour = 0;
 					int min = 0;
@@ -139,56 +113,85 @@ public class MedFrame {
 							min = Integer.parseInt(time.substring(2, 4));
 						}
 					}
-					compareTimes(hour, min);
+					compareTimes(hour, min, medMap.get(time));
+				}
+				// for testing
+				for (String key : medMap.keySet()) {
+					System.out.println("key: " + key + " val: " + medMap.get(key));
 				}
 			}
 		});
-		startBtn.setBounds(499, 81, 117, 29);
+		startBtn.setBounds(299, 81, 117, 29);
 		frame.getContentPane().add(startBtn);
+
+		// adds more meds
+		promtMeds(); // initial med prompt
+		JButton btnAddMed = new JButton("+");
+		btnAddMed.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				medTreeInsertion();
+				promtMeds();
+				frame.revalidate(); // tells the layout manager to reset based on the new component list. This will also trigger a call to repaint.	
+				frame.repaint();	// used to tell a component to repaint itself.
+				btnAddMed.setBounds(29, 100 + (medNum * 30), 51, 29);
+				frame.getContentPane().add(btnAddMed);
+			}
+		});
+		btnAddMed.setBounds(29, 155, 51, 29); // initial + button
+		frame.getContentPane().add(btnAddMed);
 	}
 
-	private void promtMeds(int intNumOfMeds) {
-		JTextField medName;
+	private void promtMeds() {
 		JLabel lblTimesPerDay;
 		JLabel lblStartTime;
 		JLabel lblRepeat;
 		JLabel lblMeds;
 
-		for (int i = 1; i <= intNumOfMeds; i++) {
-			lblMeds = new JLabel("Medication " + i);
-			lblMeds.setBounds(6, 89 + (i * 30), 217, 20); // spaces out labels by 30 pixels
-			frame.getContentPane().add(lblMeds);
+		lblMeds = new JLabel("Medication " + medNum);
+		lblMeds.setBounds(6, 100 + (medNum * 30), 217, 20); // spaces out labels by 30 pixels
+		frame.getContentPane().add(lblMeds);
 
-			medName = new JTextField();
-			setTextFields(medName, 100, 89 + (i * 30), 100, 20);
+		medName = new JTextField();
+		setTextFields(medName, 100, 100 + (medNum * 30), 100, 20);
 
-			lblTimesPerDay = new JLabel("Times per day");
-			lblTimesPerDay.setBounds(220, 89 + (i * 30), 217, 20); // spaces out labels by 30 pixels
-			frame.getContentPane().add(lblTimesPerDay);
+		lblTimesPerDay = new JLabel("Times per day");
+		lblTimesPerDay.setBounds(220, 100 + (medNum * 30), 217, 20); // spaces out labels by 30 pixels
+		frame.getContentPane().add(lblTimesPerDay);
 
-			JTextField timesPerDayTxt = new JTextField();
-			setTextFields(timesPerDayTxt, 320, 89 + (i * 30), 50, 20);
+		JTextField timesPerDayTxt = new JTextField();
+		setTextFields(timesPerDayTxt, 320, 100 + (medNum * 30), 50, 20);
 
-			lblStartTime = new JLabel("Start time");
-			lblStartTime.setBounds(390, 89 + (i * 30), 217, 20); // spaces out labels by 30 pixels
-			frame.getContentPane().add(lblStartTime);
+		lblStartTime = new JLabel("Start time");
+		lblStartTime.setBounds(390, 100 + (medNum * 30), 217, 20); // spaces out labels by 30 pixels
+		frame.getContentPane().add(lblStartTime);
 
-			String[] times = startTimes();
-			timeList = new JComboBox<String>(times); // add to some data structure
-			timeSelectionList.add(timeList);
-			timeList.setBounds(460, 89 + (i * 30), 200, 20);
-			frame.getContentPane().add(timeList);
+		String[] times = startTimes();
+		timeList = new JComboBox<String>(times); // add to some data structure
+		timeList.setBounds(460, 100 + (medNum * 30), 200, 20);
+		frame.getContentPane().add(timeList);
 
-			lblRepeat = new JLabel("Repeat?");
-			lblRepeat.setBounds(675, 89 + (i * 30), 240, 20); // spaces out labels by 30 pixels
-			frame.getContentPane().add(lblRepeat);
+		lblRepeat = new JLabel("Repeat?");
+		lblRepeat.setBounds(675, 100 + (medNum * 30), 240, 20); // spaces out labels by 30 pixels
+		frame.getContentPane().add(lblRepeat);
 
-			String[] freq = { "never", "hourly", "every two hours", "every three hours", "every four hours", "every five hours", 
-					"every six hours", "every seven hours", "every eight hours", "every nine hours",
-					"every ten hours", "every eleven hours", "every twelve hours"};
-			JComboBox<String> freqList = new JComboBox<String>(freq);
-			freqList.setBounds(740, 89 + (i * 30), 200, 20);
-			frame.getContentPane().add(freqList);
+		String[] freq = { "never", "hourly", "every two hours", "every three hours", "every four hours", "every five hours", 
+				"every six hours", "every seven hours", "every eight hours", "every nine hours",
+				"every ten hours", "every eleven hours", "every twelve hours"};
+		JComboBox<String> freqList = new JComboBox<String>(freq);
+		freqList.setBounds(740, 100 + (medNum * 30), 200, 20);
+		frame.getContentPane().add(freqList);
+		
+		medNum++;
+	}
+	
+	private void medTreeInsertion() {
+		String selectedTime = timeList.getSelectedItem().toString();
+		if (medMap.containsKey(selectedTime)) {
+			medMap.get(selectedTime).add(medName.getText());
+		} else {
+			ArrayList<String> temp = new ArrayList<String>();
+			temp.add(medName.getText());
+			medMap.put(selectedTime, temp);
 		}
 	}
 
@@ -197,20 +200,10 @@ public class MedFrame {
 	 * @param hour
 	 * @param min
 	 */
-	private void compareTimes(int hour, int min) {
-		Calendar cal = Calendar.getInstance();
-		int year = cal.get(Calendar.YEAR);
-		int month = cal.get(Calendar.MONTH) + 1; // months start at 0th index
-		int day = cal.get(Calendar.DAY_OF_MONTH);
-		DateTime limit = new DateTime(year, month, day, hour, min, 0, 0);
-		Boolean isLate = false;
-		
-		System.out.println("alarm set...");
-		while(!isLate) {
-			DateTime now = DateTime.now();
-			isLate = now.isAfter(limit);
-		}
-		playAlarm(); // given alarm time has occurred.
+	private void compareTimes(int hour, int min, ArrayList<String> medNames) {
+		AlarmStarter alarmStarter = new AlarmStarter(hour, min, medNames);
+		Thread alarmThread = new Thread(alarmStarter);
+		alarmThread.start();
 	}
 
 	private void setTextFields(JTextField textField, int xCord, int yCord, int width, int height) {
@@ -235,27 +228,5 @@ public class MedFrame {
 			times[i + 26] = time + ":30PM";
 		}
 		return times;
-	}
-
-	@SuppressWarnings("restriction")
-	private void playAlarm() {
-		// open the sound file as a Java input stream
-		try {
-			String audioFile = "/Users/ydylan/Documents/wav_files/alarm.au";
-			InputStream in = new FileInputStream(audioFile);
-
-			// create an audiostream from the inputstream		 
-			AudioStream audioStream = new AudioStream(in);
-
-			// play the audio clip with the audioplayer class
-			AudioPlayer.player.start(audioStream);
-
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 }
