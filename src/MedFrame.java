@@ -6,9 +6,8 @@ import javax.swing.JTextField;
 import javax.swing.JLabel;
 import javax.swing.JButton;
 
-import java.util.ArrayList;
-import java.util.TreeMap;
-
+import java.util.HashMap;
+import java.util.HashSet;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
@@ -16,7 +15,7 @@ public class MedFrame {
 
 	private JFrame frame;
 	private JComboBox<String> timeList;
-	private final TreeMap<String, ArrayList<String>> medMap;
+	private final HashMap<String, HashSet<String>> medMap;
 	private JTextField medName;
 	private int medNum;
 
@@ -40,7 +39,7 @@ public class MedFrame {
 	 * Create the application.
 	 */
 	public MedFrame() {
-		medMap = new TreeMap<String, ArrayList<String>>();
+		medMap = new HashMap<String, HashSet<String>>();
 		medNum = 1;
 		initialize();
 	}
@@ -116,7 +115,7 @@ public class MedFrame {
 		JButton btnAddMed = new JButton("+");
 		btnAddMed.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				medTreeInsertion();
+				medTreeInsertion(); // insert previous med info to tree
 				promtMeds();
 				frame.revalidate(); // tells the layout manager to reset based on the new component list. This will also trigger a call to repaint.	
 				frame.repaint();	// used to tell a component to repaint itself.
@@ -176,7 +175,7 @@ public class MedFrame {
 		if (medMap.containsKey(selectedTime)) {
 			medMap.get(selectedTime).add(medName.getText());
 		} else {
-			ArrayList<String> temp = new ArrayList<String>();
+			HashSet<String> temp = new HashSet<String>(); // create new set for new time val
 			temp.add(medName.getText());
 			medMap.put(selectedTime, temp);
 		}
@@ -187,7 +186,7 @@ public class MedFrame {
 	 * @param hour
 	 * @param min
 	 */
-	private void compareTimes(int hour, int min, ArrayList<String> medNames) {
+	private void compareTimes(int hour, int min, HashSet<String> medNames) {
 		AlarmStarter alarmStarter = new AlarmStarter(hour, min, medNames);
 		Thread alarmThread = new Thread(alarmStarter);
 		alarmThread.start();

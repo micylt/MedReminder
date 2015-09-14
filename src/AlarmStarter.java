@@ -2,8 +2,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashSet;
 
 import javax.swing.JOptionPane;
 
@@ -15,9 +15,9 @@ import sun.audio.AudioStream;
 public class AlarmStarter implements Runnable {
 	private int hour;
 	private int min;
-	private ArrayList<String> medNames;
+	private HashSet<String> medNames;
 
-	public AlarmStarter(int hour, int min, ArrayList<String> medNames) {
+	public AlarmStarter(int hour, int min, HashSet<String> medNames) {
 		this.hour = hour;
 		this.min = min;
 		this.medNames = medNames;
@@ -59,10 +59,9 @@ public class AlarmStarter implements Runnable {
 			}
 
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "Internal audio error (audio file not found).");
+			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
